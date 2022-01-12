@@ -4,7 +4,7 @@ from scrapy.http import Request
 from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
 
-import urlparse
+import urllib.parse
 
 class UbloxSpider(Spider):
     name = "ublox"
@@ -16,7 +16,7 @@ class UbloxSpider(Spider):
         for href in response.xpath(
                 "//div[@class='view-content']//a/@href").extract():
             yield Request(
-                url=urlparse.urljoin(response.url, href),
+                url=urllib.parse.urljoin(response.url, href),
                 headers={"Referer": response.url},
                 callback=self.parse_product)
 

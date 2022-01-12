@@ -5,7 +5,7 @@ from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
 
 import json
-import urlparse
+import urllib.parse
 
 class TPLinkENSpider(Spider):
     name = "tp-link_en"
@@ -18,7 +18,7 @@ class TPLinkENSpider(Spider):
         for cid in response.xpath(
                 "//select[@id='slcProductCat']//option/@value").extract():
             yield Request(
-                url=urlparse.urljoin(
+                url=urllib.parse.urljoin(
                     response.url, "handlers/handler.ashx?action=getsubcatlist&catid=%s" % cid),
                 meta={"cid": cid},
                 headers={"Referer": response.url,
@@ -31,7 +31,7 @@ class TPLinkENSpider(Spider):
         if json_response:
             for entry in json_response:
                 yield Request(
-                    url=urlparse.urljoin(
+                    url=urllib.parse.urljoin(
                         response.url, "handler.ashx?action=getsubcatlist&catid=%s" % entry["id"]),
                     meta={"cid": entry["id"]},
                     headers={"Referer": response.url,
@@ -39,7 +39,7 @@ class TPLinkENSpider(Spider):
                     callback=self.parse_json)
         else:
             yield Request(
-                url=urlparse.urljoin(
+                url=urllib.parse.urljoin(
                     response.url, "../download-center.html?async=1&showEndLife=true&catid=%s" % response.meta["cid"]),
                 headers={"Referer": response.url,
                          "X-Requested-With": "XMLHttpRequest"},
@@ -48,7 +48,7 @@ class TPLinkENSpider(Spider):
     def parse_products(self, response):
         for link in response.xpath("//a"):
             yield Request(
-                url=urlparse.urljoin(
+                url=urllib.parse.urljoin(
                     response.url, link.xpath("./@href").extract()[0]),
                 meta={"product": link.xpath("./@data-model").extract()[0]},
                 headers={"Referer": response.url},
@@ -62,7 +62,7 @@ class TPLinkENSpider(Spider):
                 text = entry.xpath(".//text()").extract()[0]
 
                 yield Request(
-                    url=urlparse.urljoin(response.url, href),
+                    url=urllib.parse.urljoin(response.url, href),
                     meta={"product": response.meta["product"], "build": text},
                     headers={"Referer": response.url},
                     callback=self.parse_product)

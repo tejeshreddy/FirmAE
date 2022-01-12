@@ -7,7 +7,7 @@ from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
 
 import json
-import urlparse
+import urllib.parse
 
 
 class TendaZHSpider(Spider):
@@ -22,7 +22,7 @@ class TendaZHSpider(Spider):
             cid = href[href.rfind("-") + 1: href.rfind(".html")]
             if cid.isdigit():
                 yield Request(
-                    url=urlparse.urljoin(
+                    url=urllib.parse.urljoin(
                         response.url, "../ashx/CategoryList.ashx?parentCategoryId=%s" % (cid)),
                     headers={"Referer": response.url,
                              "X-Requested-With": "XMLHttpRequest"},
@@ -34,21 +34,21 @@ class TendaZHSpider(Spider):
             if "PC_Level" in entry:
                 if entry["PC_Level"] == "1" or entry["PC_Level"] == "2":
                     yield Request(
-                        url=urlparse.urljoin(
+                        url=urllib.parse.urljoin(
                             response.url, "CategoryList.ashx?parentCategoryId=%s" % entry["ID"]),
                         headers={"Referer": response.url,
                                  "X-Requested-With": "XMLHttpRequest"},
                         callback=self.parse_json)
                 else:
                     yield Request(
-                        url=urlparse.urljoin(
+                        url=urllib.parse.urljoin(
                             response.url, "ProductList.ashx?categoryId=%s" % entry["ID"]),
                         headers={"Referer": response.url,
                                  "X-Requested-With": "XMLHttpRequest"},
                         callback=self.parse_json)
             elif "PRO_Name" in entry:
                 yield Request(
-                    url=urlparse.urljoin(
+                    url=urllib.parse.urljoin(
                         response.url, "../services/downlist-%s.html" % entry["ID"]),
                     meta={"product": entry["PRO_Model"]},
                     headers={"Referer": response.url},
@@ -56,7 +56,7 @@ class TendaZHSpider(Spider):
 
     def parse_product(self, response):
         for section in response.xpath("//ul[@id='tab_conbox']/li"):
-            if u"升级软件" in "".join(section.xpath("./h3//text()").extract()):
+            if "升级软件" in "".join(section.xpath("./h3//text()").extract()):
                 for entry in section.xpath(".//dd/a"):
                     text = entry.xpath(".//text()").extract()
                     href = entry.xpath("./@href").extract()[0]

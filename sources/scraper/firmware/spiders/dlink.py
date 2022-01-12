@@ -1,11 +1,12 @@
 from scrapy import Spider
 from scrapy.http import Request
-
 from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
-
 import json
-import urlparse
+import urllib.parse
+import os
+import urllib.request
+import wget
 
 
 class DLinkSpider(Spider):
@@ -21,8 +22,10 @@ class DLinkSpider(Spider):
 
     def parse(self, response):
         for entry in response.xpath("//tr/td[1]/a/@alt").extract():
+            url=urllib.parse.urljoin(
+                    response.url, "ProductInfo.aspx?m=%s" % entry)
             yield Request(
-                url=urlparse.urljoin(
+                url=urllib.parse.urljoin(
                     response.url, "ProductInfo.aspx?m=%s" % entry),
                 headers={"Referer": response.url},
                 meta={"product": entry},
@@ -32,10 +35,10 @@ class DLinkSpider(Spider):
         for entry in response.xpath("//select[@id='ddlHardWare']/option"):
             rev = entry.xpath(".//text()").extract()[0]
             val = entry.xpath("./@value").extract()[0]
-
+            # print(rev, val)
             if val:
                 yield Request(
-                    url=urlparse.urljoin(
+                    url=urllib.parse.urljoin(
                         response.url, "/ajax/ajax.ashx?action=productfile&ver=%s" % val),
                     headers={"Referer": response.url,
                              "X-Requested-With": "XMLHttpRequest"},
@@ -43,26 +46,16 @@ class DLinkSpider(Spider):
                         "product"], "revision": rev},
                     callback=self.parse_json)
 
+
     def parse_json(self, response):
         mib = None
         json_response = json.loads(response.body_as_unicode())
+ 
+        dir_name = "../../../images/dlink/"
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
 
         for entry in reversed(json_response["item"]):
             for file in reversed(entry["file"]):
-                if file["filetypename"].lower() == "firmware" or file[
-                        "isFirmF"] == "1":
-                    item = FirmwareLoader(item=FirmwareImage(),
-                                          response=response,
-                                          date_fmt=["%m/%d/%y"])
-                    item.add_value("version",
-                                   FirmwareLoader.find_version_period([file["name"]]))
-                    item.add_value("date", file["date"])
-                    item.add_value("description", file["name"])
-                    item.add_value("url", file["url"])
-                    item.add_value("build", response.meta["revision"])
-                    item.add_value("product", response.meta["product"])
-                    item.add_value("vendor", self.name)
-                    item.add_value("mib", mib)
-                    yield item.load_item()
-                elif "MIB" in file["name"]:
-                    mib = file["url"]
+                if file["filetypename"].lower() == "firmware" or file["isFirmF"] == "1":
+                    wget.download(file["url"], dir_name + file["name"] + ".zip")

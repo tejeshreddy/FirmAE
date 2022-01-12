@@ -5,7 +5,7 @@ from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
 
 import json
-import urlparse
+import urllib.parse
 
 
 class TendaENSpider(Spider):
@@ -18,7 +18,7 @@ class TendaENSpider(Spider):
         for cid in response.xpath(
                 "//div[@class='download_main_list']//li[@data-level='1']/@id").extract():
             yield Request(
-                url=urlparse.urljoin(
+                url=urllib.parse.urljoin(
                     response.url, "../ashx/CategoryList.ashx?parentCategoryId=%s" % cid),
                 headers={"Referer": response.url,
                          "X-Requested-With": "XMLHttpRequest"},
@@ -30,21 +30,21 @@ class TendaENSpider(Spider):
             if "PC_Level" in entry:
                 if entry["PC_Level"] == "1" or entry["PC_Level"] == "2":
                     yield Request(
-                        url=urlparse.urljoin(
+                        url=urllib.parse.urljoin(
                             response.url, "CategoryList.ashx?parentCategoryId=%s" % entry["ID"]),
                         headers={"Referer": response.url,
                                  "X-Requested-With": "XMLHttpRequest"},
                         callback=self.parse_json)
                 else:
                     yield Request(
-                        url=urlparse.urljoin(
+                        url=urllib.parse.urljoin(
                             response.url, "ProductList.ashx?categoryId=%s" % entry["ID"]),
                         headers={"Referer": response.url,
                                  "X-Requested-With": "XMLHttpRequest"},
                         callback=self.parse_json)
             elif "PRO_Name" in entry:
                 yield Request(
-                    url=urlparse.urljoin(
+                    url=urllib.parse.urljoin(
                         response.url, "../services/downlist-%s.html" % entry["ID"]),
                     meta={"product": entry["PRO_Model"]},
                     headers={"Referer": response.url},

@@ -1,10 +1,14 @@
 from scrapy.loader import ItemLoader
-from scrapy.loader.processors import Identity, MapCompose, TakeFirst
+# from scrapy.loader.processors import Identity, MapCompose, TakeFirst
+# from scrapy.loader.processors import Identity, MapCompose
+# from scrapy.itemloaders.processors import TakeFirst
+from itemloaders.processors import TakeFirst, MapCompose, Join, Identity
+from scrapy.loader import ItemLoader
 
 import datetime
 import re
 import string
-import urlparse
+import urllib.parse
 
 
 class FirmwareLoader(ItemLoader):
@@ -12,25 +16,25 @@ class FirmwareLoader(ItemLoader):
     @staticmethod
     def find_product(text):
         match = re.search(r"(?:model[:. #]*([\w-][\w.-]+))", " ".join(
-            text).replace(u"\xa0", " ").strip(), flags=re.IGNORECASE)
+            text).replace("\xa0", " ").strip(), flags=re.IGNORECASE)
         return next((x for x in match.groups() if x), None) if match else None
 
     @staticmethod
     def find_version(text):
         match = re.search(r"(?:version[:. ]*([\w-][\w.-]+)|ve?r?s?i?o?n?[:. ]*([\d-][\w.-]+))",
-                          " ".join(text).replace(u"\xa0", " ").strip(), flags=re.IGNORECASE)
+                          " ".join(text).replace("\xa0", " ").strip(), flags=re.IGNORECASE)
         return next((x for x in match.groups() if x), None) if match else None
 
     @staticmethod
     def find_build(text):
         match = re.search(r"(?:build[:. ]*([\w-][\w.-]+)|bu?i?l?d?[:. ]*([\d-][\w.-]+))",
-                          " ".join(text).replace(u"\xa0", " ").strip(), flags=re.IGNORECASE)
+                          " ".join(text).replace("\xa0", " ").strip(), flags=re.IGNORECASE)
         return next((x for x in match.groups() if x), None) if match else None
 
     @staticmethod
     def find_version_period(text):
         match = re.search(r"((?:[0-9])(?:[\w-]*\.[\w-]*)+)",
-                          " ".join(text).replace(u"\xa0", " ").strip())
+                          " ".join(text).replace("\xa0", " ").strip())
         return next((x for x in match.groups() if x and "192.168." not in x.lower()), None) if match else None
 
     def find_date(self, text):
@@ -38,18 +42,20 @@ class FirmwareLoader(ItemLoader):
             fmt = "(" + re.escape(fmt).replace("\%b", "[a-zA-Z]{3}").replace("\%B", "[a-zA-Z]+").replace(
                 "\%m", "\d{1,2}").replace("\%d", "\d{1,2}").replace("\%y", "\d{2}").replace("\%Y", "\d{4}") + ")"
             match = re.search(fmt, "".join(text).strip())
-            res = filter(lambda x: x, match.groups()) if match else None
+            res = [x for x in match.groups() if x] if match else None
 
             if res:
                 return res[0]
         return None
 
     def clean(s):
-        return filter(lambda x: x in string.printable, s).replace("\r", "").replace("\n", "").replace(u"\xa0", " ").strip()
+        print(string.printable)
+        print([x for x in s if x in string.printable])
+        return "".join([x for x in s if x in string.printable]).replace("\r", "").replace("\n", "").replace("\xa0", " ").strip()
 
     def fix_url(url, loader_context):
-        if not urlparse.urlparse(url).netloc:
-            return urlparse.urljoin(loader_context.get("response").url, url)
+        if not urllib.parse.urlparse(url).netloc:
+            return urllib.parse.urljoin(loader_context.get("response").url, url)
         return url
 
     def parse_date(date, loader_context):
@@ -64,7 +70,6 @@ class FirmwareLoader(ItemLoader):
         return re.sub(r"<[a-zA-Z0-9\"/=: ]+>", "", s)
 
     default_output_processor = TakeFirst()
-
     product_in = MapCompose(clean)
     vendor_in = Identity()
 

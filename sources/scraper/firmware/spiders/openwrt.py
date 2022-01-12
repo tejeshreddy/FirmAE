@@ -4,7 +4,7 @@ from scrapy.http import Request
 from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
 
-import urlparse
+import urllib.parse
 
 
 class OpenWRTSpider(Spider):
@@ -18,7 +18,7 @@ class OpenWRTSpider(Spider):
             href = link.xpath("@href").extract()[0]
 
             yield Request(
-                url=urlparse.urljoin(response.url, href),
+                url=urllib.parse.urljoin(response.url, href),
                 headers={"Referer": response.url},
                 meta={"version": FirmwareLoader.find_version_period(text)},
                 callback=self.parse_url)
@@ -35,7 +35,7 @@ class OpenWRTSpider(Spider):
                     product = "%s-%s" % (response.meta["product"], text[0: -1]) if "product" in response.meta else text[0: -1]
 
                     yield Request(
-                        url=urlparse.urljoin(response.url, href),
+                        url=urllib.parse.urljoin(response.url, href),
                         headers={"Referer": response.url},
                         meta={"version": response.meta[
                             "version"], "product": product},
