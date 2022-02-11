@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata: 
+  name: scraper
+spec: 
+  completionMode: Indexed
+  completions: 1
+  parallelism: 1
+  template: 
+    spec: 
+      containers: 
+        - image: "tejeshreddy/scraper:tplink"
+          imagePullPolicy: Always
+          name: scraper
+          resources: 
+            limits: 
+              cpu: "1"
+              memory: 64Gi
+            requests: 
+              cpu: "0.5"
+              memory: 16Gi
+          volumeMounts: 
+            - mountPath: /shared
+              name: nfs-shared
+      restartPolicy: Never
+      volumes: 
+        - name: nfs-shared
+          persistentVolumeClaim: 
+            claimName: nfs
