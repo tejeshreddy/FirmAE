@@ -44,6 +44,7 @@ class TPLink(Spider):
                 callback=self.parse_device
             )
     
+
     def parse_device(self, response):
         # model = response.xpath('//*[@id="model-version-name"]//text()').get()
         # self.logger.info(response.xpath('//*[@id="model-version-name"]//text()').get())
