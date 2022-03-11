@@ -12,6 +12,7 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.cookies.CookiesMiddleware': None
 }
 
+
 FILES_STORE = "./output/"
 
 AUTOTHROTTLE_ENABLED = True
