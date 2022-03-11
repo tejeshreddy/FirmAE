@@ -17,6 +17,8 @@ import wget
 import logging
 from scrapy.utils.log import configure_logging 
 
+directory_name = "/shared/firmware-images/trendnet/"
+
 class TrendnetSpider(Spider):
     handle_httpstatus_list = [404]
     name = "trendnet"
@@ -33,11 +35,10 @@ class TrendnetSpider(Spider):
             )
     
     def parse_products(self, response):
-        with open("trendnet-metadata.txt", "a") as fp:
-            for entry in response.xpath("/html/body/pre/a/@href").extract():
-                fp.write(str(urllib.parse.urljoin(response.url, entry)))
-                fp.write("\n")
+        for entry in response.xpath("/html/body/pre/a/@href").extract():
+            file_name = entry.split("/")[-1]
+            file_link = str(urllib.parse.urljoin(response.url, entry))
 
-
-        
+            if file_name not in os.listdir(directory_name):
+                wget.download(file_link, directory_name + file_name)
 
