@@ -36,15 +36,6 @@ class NetgearSpider(Spider):
             else:
                 continue
         print(self.primary_set)
-        # with open("metadata-netgear.txt", "a") as fp:
-        #     fp.write(str(self.primary_set))
-        
-        # for entry in response.xpath("//*[@class='product-category-product-intern']/div/div/@onclick").extract():
-        #     product_link = entry.rsplit("/", 1)[1].replace("'", "")
-        #     yield Request(
-        #         url=urllib.parse.urljoin(base_url, product_link + '#download'),
-        #         callback=self.parse_products
-        #     )
         
 
     def parse_page(self, response):
@@ -57,11 +48,20 @@ class NetgearSpider(Spider):
     def parse_products(self, response):
         global primary_set
         product_names = response.xpath("//*[@id='topicsdownload']/div/div/div/div/section/div/div/a/h1//text()").extract()
+        product_names = [name.rstrip() for name in product_names]
+
         product_links = response.xpath("//*[@id='topicsdownload']/div/div/div/div/section/div/div/div/div/a/@href").extract()
-        
+        product_links = [link.rstrip() for link in product_links]
+
+        product_json = dict(zip(product_names, product_links))
+
+        # with open("netgear-metadata.txt", "a") as fp:
+        #     for k, v in product_json.items():
+        #         fp.write(json.dumps({k: v}))
+        #         fp.write("\n")
+
         for link in product_links:
             file_name = link.rsplit("/", 1)[1]
-
             if (file_name.split(".")[-1] in ["zip"]) and (file_name not in os.listdir(directory_name)):
                 wget.download(link, directory_name + file_name)
 
