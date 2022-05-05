@@ -1,77 +1,54 @@
+from asyncio.log import logger
+from calendar import firstweekday
+from distutils.debug import DEBUG
+from fileinput import filename
+from gc import callbacks
+from itertools import product
+from math import prod
+from subprocess import call
 from scrapy import Spider
 from scrapy.http import Request
-
+import time
 from firmware.items import FirmwareImage
 from firmware.loader import FirmwareLoader
+import os
+import json
 import urllib.parse
+import wget
+import logging
+from scrapy.utils.log import configure_logging
+import pprint
 
+count = 0
+directory_name = "/shared/firmware-images/asus/"
 
-class AsusSpider(Spider):
+class ASUSSpider(Spider):
     name = "asus"
     region = "en"
     allowed_domains = ["asus.com"]
-    start_urls = ["https://www.asus.com/support/"]
+    start_urls = ["https://odinapi.asus.com/apiv2/SearchSuggestion?SystemCode=*&WebsiteCode=us&SearchKey=RTN&SearchType=ProductsAll&RowLimit=5000"]
 
-    visited = []
 
     def parse(self, response):
-        if "cid" not in response.meta:
-            for category in response.xpath("//div[@class='product-category']//a/@l1_id").extract():
-                yield Request(
-                    url=urllib.parse.urljoin(response.url, "/support/utilities/GetProducts.aspx?ln=%s&p=%s" % (self.region, category)),
-                    meta={"cid": category},
-                    headers={"Referer": response.url,
-                             "X-Requested-With": "XMLHttpRequest"},
-                    callback=self.parse)
+        query_response = json.loads(response.text)
+        print(type(query_response))
+        for object in query_response["Result"][0]["Content"]:
+            url = "https://www.asus.com/support/api/product.asmx/GetPDBIOS?website=us&model=" + object["Url"].split("/")[-3]
+            print(url)
+            yield Request(
+                url=url,
+                callback=self.parse_product
+            )
 
-        elif "sid" not in response.meta:
-            for series in response.xpath("//table/id/text()").extract():
-                yield Request(
-                    url=urllib.parse.urljoin(response.url, "/support/utilities/GetProducts.aspx?ln=%s&p=%s&s=%s" % (self.region, response.meta["cid"], series)),
-                    meta={"cid": response.meta["cid"], "sid": series},
-                    headers={"Referer": response.url,
-                             "X-Requested-With": "XMLHttpRequest"},
-                    callback=self.parse)
-
-        elif "product" not in response.meta:
-            for prod in response.xpath("//table"):
-                pid = prod.xpath("./l3_id/text()").extract()[0]
-                product = prod.xpath("./m_name/text()").extract()[0]
-                mid = prod.xpath("./m_id/text()").extract()[0]
-
-                # choose "Others" = 8
-                yield Request(
-                    url=urllib.parse.urljoin(response.url, "/support/Download/%s/%s/%s/%s/%d" % (response.meta["cid"], response.meta["sid"], pid, mid, 8)),
-                    meta={"product": product},
-                    headers={"Referer": response.url,
-                             "X-Requested-With": "XMLHttpRequest"},
-                    callback=self.parse_product)
 
     def parse_product(self, response):
-        # types: firmware = 20, gpl source = 30, bios = 3
-        for entry in response.xpath(
-                "//div[@id='div_type_20']/div[@id='download-os-answer-table']"):
-            item = FirmwareLoader(item=FirmwareImage(),
-                                  response=response, date_fmt=["%Y/%m/%d"])
-
-            version = FirmwareLoader.find_version_period(
-                entry.xpath("./p//text()").extract())
-            gpl = None
-
-            # grab first download link (e.g. DLM instead of global or p2p)
-            href = entry.xpath("./table//tr[3]//a/@href").extract()[0]
-
-            # attempt to find matching source code entry
-            if version:
-                for source in response.xpath("//div[@id='div_type_30']/div[@id='download-os-answer-table']"):
-                    if version in "".join(source.xpath("./p//text()").extract()):
-                        gpl = source.xpath("./table//tr[3]//a/@href").extract()[0]
-
-            item.add_value("version", version)
-            item.add_value("date", item.find_date(entry.xpath("./table//tr[2]/td[1]//text()").extract()))
-            item.add_value("description", " ".join(entry.xpath("./table//tr[1]//td[1]//text()").extract()))
-            item.add_value("url", href)
-            item.add_value("sdk", gpl)
-            item.add_value("product", response.meta["product"])
-            item.add_value("vendor", self.name)
-            yield item.load_item()
+        product_response = json.loads(response.text)
+        with open("asus-metadata-1.txt", "a") as fp:
+            if product_response["Status"] == "SUCCESS":
+                print(type(product_response["Result"]["Obj"][0]["Files"]))
+                for product in product_response["Result"]["Obj"][0]["Files"]:
+                    if ".exe" not in product["DownloadUrl"]["Global"]:
+                        # wget.download(product["DownloadUrl"]["Global"], directory_name + product["DownloadUrl"]["Global"].split("/")[-1])
+                        fp.write(json.dumps({ product["DownloadUrl"]["Global"].split("/")[-1]: product["DownloadUrl"]["Global"]}))
+                        fp.write("\n")
+                        # print(product["DownloadUrl"]["Global"], product["DownloadUrl"]["Global"].split("/")[-1])

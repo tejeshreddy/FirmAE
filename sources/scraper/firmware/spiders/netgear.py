@@ -22,7 +22,7 @@ directory_name = "/shared/firmware-images/netgear/"
 class NetgearSpider(Spider):
     name = "netgear"
     allowed_domains = ["netgear.com"]
-    start_urls = ["https://www.netgear.com/support/"]
+    start_urls = ["https://www.netgdear.com/support/"]
     primary_set = []
 
 
@@ -35,8 +35,14 @@ class NetgearSpider(Spider):
             )
             else:
                 continue
-        print(self.primary_set)
-        
+
+        for entry in response.xpath("/html/body/div/main/section[4]/div/div/div/div/@onclick").extract():
+            link = entry.split("=")[1].replace("'", "")
+            yield Request(
+                url=urllib.parse.urljoin(response.url, link, "#download"),
+                callback=self.parse_products
+            )
+
 
     def parse_page(self, response):
         for device in response.xpath("//*[@id='supportproduct']/section/div/section/section/section/a/@href").extract():
@@ -63,6 +69,7 @@ class NetgearSpider(Spider):
         for link in product_links:
             file_name = link.rsplit("/", 1)[1]
             if (file_name.split(".")[-1] in ["zip"]) and (file_name not in os.listdir(directory_name)):
-                wget.download(link, directory_name + file_name)
+                print(link, directory_name + file_name)
+                # wget.download(link, directory_name + file_name)
 
 
